@@ -398,7 +398,7 @@ Attention : le code doit compiler sous Linux ! Un code non compatible avec un sy
 Les dates prévisionnelles des rendus sont les suivantes :
 
 - Soutenances pendant les TP de la semaine de rentrée
-- Rapport à envoyer avant le vendredi 25/12/2022, 23:59:59 GMT+1 (pénalité sur la note du rapport de 2^n-1 points pour n jours de retard)
+- Rapport à envoyer avant le vendredi 06/01/2023, 23:59:59 GMT+1 (pénalité sur la note du rapport de 2^n-1 points pour n jours de retard)
 - Code : 2 dates de rendu
 	- 1 préversion avant les vacances (vendredi 16/12/2022, à 23:59:59 GMT+1)
 	- 1 version finale après les soutenances (vendredi 06/01/2023, à 23:59:59 GMT+1)
