@@ -22,6 +22,8 @@ Le reste de ce README définit plus en détails les éléments permettant d'acco
 
 Vous utiliserez comme source de données un corpus de 517401 e-mails de la société Enron. L'analyse des mails portera sur la fréquence des échanges de mails entre personnels. Pour cela, vous analyserez les entêtes de mails, notamment les champs **From**, **To**, **Cc** et **Bcc**.
 
+Ce corpus de données est disponible à [l'URL suivante](https://www.cs.cmu.edu/~./enron/enron_mail_20150507.tar.gz)
+
 Les données qui vous sont fournies le sont dans une arborescence comme suit :
 ```bash
 maildir
