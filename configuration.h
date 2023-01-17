@@ -17,7 +17,12 @@ typedef struct {
     bool is_verbose;
     uint8_t cpu_core_multiplier;
     uint16_t process_count;
+    char method[16];
 } configuration_t;
+
+char *skip_spaces(char *str);
+char *check_equal(char *str);
+char *get_word(char *source, char *target);
 
 configuration_t *make_configuration(configuration_t *base_configuration, char *argv[], int argc);
 configuration_t *read_cfg_file(configuration_t *base_configuration, char *path_to_cfg_file);

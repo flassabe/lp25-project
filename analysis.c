@@ -16,100 +16,211 @@
 
 #include "utility.h"
 
-/*!
- * @brief parse_dir parses a directory to find all files in it and its subdirs (recursive analysis of root directory)
- * All files must be output with their full path into the output file.
- * @param path the path to the object directory
- * @param output_file a pointer to an already opened file
- */
 void parse_dir(char *path, FILE *output_file) {
-    // 1. Check parameters
-    // 2. Gor through all entries: if file, write it to the output file; if a dir, call parse dir on it
-    // 3. Clear all allocated resources
+    if (!output_file || !path)
+        return;
+
+    DIR *dir = opendir(path);
+    if (!dir)
+        return;
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_type == DT_REG) {
+            fprintf(output_file, "%s/%s\n", path, entry->d_name);
+        } else if (entry->d_type == DT_DIR && strcmp(entry->d_name, ".") !=0 && strcmp(entry->d_name, "..") != 0) {
+            char new_path[STR_MAX_LEN];
+            if (concat_path(path, entry->d_name, new_path)) {
+                parse_dir(new_path, output_file);
+            }
+        }
+    }
+    closedir(dir);
 }
 
-/*!
- * @brief clear_recipient_list clears all recipients in a recipients list
- * @param list the list to be cleared
- */
+typedef struct _recipient {
+    char email[STR_MAX_LEN];
+    struct _recipient *next;
+} simple_recipient_t;
+
 void clear_recipient_list(simple_recipient_t *list) {
+    while (list) {
+        simple_recipient_t *tmp = list;
+        list = list->next;
+        free(tmp);
+    }
 }
 
-/*!
- * @brief add_recipient_to_list adds a recipient to a recipients list (as a pointer to a recipient)
- * @param recipient_email the string containing the e-mail to add
- * @param list the list to add the e-mail to
- * @return a pointer to the new recipient (to update the list with)
- */
 simple_recipient_t *add_recipient_to_list(char *recipient_email, simple_recipient_t *list) {
-    return NULL;
+    if (!recipient_email)
+        return list;
+
+    simple_recipient_t *new_recipient = malloc(sizeof (simple_recipient_t));
+    if (!new_recipient)
+        return list;
+
+    new_recipient->next = list;
+    strcpy(new_recipient->email, recipient_email);
+    return new_recipient;
 }
 
-/*!
- * @brief extract_emails extracts all the e-mails from a buffer and put the e-mails into a recipients list
- * @param buffer the buffer containing one or more e-mails
- * @param list the resulting list
- * @return the updated list
- */
+bool is_address_valid(char *address) {
+    bool at_read = false;
+    for (size_t i=0; i<strlen(address); ++i) {
+        if (address[i] == '<' || address[i] == '>' || address[i] == '=')
+            return false; // Simplified processing. We shall strip <> chars to extract the real address
+        if (address[i] == '@') {
+            if (!at_read)
+                at_read = true;
+            else
+                return false; // No double @ in e-mail
+        }
+    }
+    if (at_read)
+        return true;
+    return false;
+}
+
 simple_recipient_t *extract_emails(char *buffer, simple_recipient_t *list) {
-    // 1. Check parameters
-    // 2. Go through buffer and extract e-mails
-    // 3. Add each e-mail to list
-    // 4. Return list
+    if (!buffer)
+        return list;
+    char *address = strtok(buffer, ", \t");
+    while (address) {
+        if (is_address_valid(address))
+            list = add_recipient_to_list(address, list);
+        address = strtok(NULL, ", \t");
+    }
     return list;
 }
 
-/*!
- * @brief extract_e_mail extracts an e-mail from a buffer
- * @param buffer the buffer containing the e-mail
- * @param destination the buffer into which the e-mail is copied
- */
 void extract_e_mail(char buffer[], char destination[]) {
+    char *character = buffer;
+    char *wr = destination;
+    while (isspace(*character)) ++character;
+    while (*character != ' ' && *character != '\r' && *character != '\n' && *character != '\0' && *character != '\t') {
+        *wr++ = *character++;
+    }
+    *wr = '\0';
 }
 
-// Used to track status in e-mail (for multi lines To, Cc, and Bcc fields)
 typedef enum {IN_DEST_FIELD, OUT_OF_DEST_FIELD} read_status_t;
 
-/*!
- * @brief parse_file parses mail file at filepath location and writes the result to
- * file whose location is on path output
- * @param filepath name of the e-mail file to analyze
- * @param output path to output file
- * Uses previous utility functions: extract_email, extract_emails, add_recipient_to_list,
- * and clear_recipient_list
- */
 void parse_file(char *filepath, char *output) {
-    // 1. Check parameters
-    // 2. Go through e-mail and extract From: address into a buffer
-    // 3. Extract recipients (To, Cc, Bcc fields) and put it to a recipients list.
-    // 4. Lock output file
-    // 5. Write to output file according to project instructions
-    // 6. Unlock file
-    // 7. Close file
-    // 8. Clear all allocated resources
+    if (!filepath || !output)
+        return;
+
+    FILE *mail_file = fopen(filepath, "r");
+    if (!mail_file)
+        return;
+
+    char sender_email[STR_MAX_LEN] = "";
+    simple_recipient_t *recipient_list = NULL;
+    read_status_t status = OUT_OF_DEST_FIELD;
+    char read_buffer[5*STR_MAX_LEN];
+    while(fgets(read_buffer, sizeof (read_buffer)-1, mail_file)) {
+        char *last_char = &read_buffer[strlen(read_buffer)-1];
+        while (*last_char == '\n' || *last_char == '\r' || *last_char == ' ') { // strip trailing EOL and spaces
+            *last_char = '\0';
+            if (last_char != read_buffer)
+                --last_char;
+            else
+                break;
+        }
+        if (strncmp(read_buffer, "From: ", strlen("From: ")) == 0) {
+            extract_e_mail(&read_buffer[6], sender_email);
+            if (!is_address_valid(sender_email))
+                break;
+            //printf("From address: %s\n", sender_email);
+        } else if (strncmp(read_buffer, "To: ", strlen("To: ")) == 0
+        || strncmp(read_buffer, "Cc: ", strlen("Cc: ")) == 0) {
+            recipient_list = extract_emails(&read_buffer[4], recipient_list);
+            if (*last_char == ',')
+                status = IN_DEST_FIELD;
+        } else if (strncmp(read_buffer, "Bcc: ", strlen("Bcc: ")) == 0) {
+            recipient_list = extract_emails(&read_buffer[5], recipient_list);
+            if (*last_char == ',')
+                status = IN_DEST_FIELD;
+        } else if (status == IN_DEST_FIELD) {
+            recipient_list = extract_emails(read_buffer, recipient_list);
+            if (*last_char != ',')
+                status = OUT_OF_DEST_FIELD;
+        } else if (strncmp(read_buffer, "X-From: ", strlen("X-From: ")) == 0) // If X-From is read, we already had all other required fields
+            break;
+    }
+    fclose(mail_file);
+
+    if (strlen(sender_email) == 0 || !recipient_list) {
+        clear_recipient_list(recipient_list);
+        return;
+    }
+
+    int output_file = open(output, O_RDWR | O_APPEND | O_CREAT, 00660);
+    if (output_file != -1) {
+        // Count elements in list
+        uint32_t elements_count = 2 + strlen(sender_email); // init to sender e-mail length + trailing \n + \0
+        simple_recipient_t *p = recipient_list;
+        while (p) {
+            elements_count += 1 + strlen(p->email); // space + length of e-mail
+            p = p->next;
+        }
+        // Make buffer to write
+        char *write_buffer = malloc(sizeof(char) * elements_count);
+        p = recipient_list;
+        strcpy(write_buffer, sender_email);
+        while (p) {
+            strcat(write_buffer, " ");
+            strcat(write_buffer, p->email);
+            p = p->next;
+        }
+        strcat(write_buffer, "\n");
+        while (flock(output_file, LOCK_EX) == -1);
+        lseek(output_file, 0, SEEK_END);
+        write(output_file, write_buffer, elements_count-1); // Don't write \0 into file
+        // Delete buffer
+        //printf("%s", write_buffer);
+        free(write_buffer);
+//        fsync(output_file);
+        flock(output_file, LOCK_UN);
+        close(output_file);
+    }
+
+    clear_recipient_list(recipient_list);
 }
 
-/*!
- * @brief process_directory goes recursively into directory pointed by its task parameter object_directory
- * and lists all of its files (with complete path) into the file defined by task parameter temporary_directory/name of
- * object directory
- * @param task the task to execute: it is a directory_task_t that shall be cast from task pointer
- * Use parse_dir.
- */
 void process_directory(task_t *task) {
-    // 1. Check parameters
-    // 2. Go through dir tree and find all regular files
-    // 3. Write all file names into output file
-    // 4. Clear all allocated resources
+    if (!task)
+        return;
+
+    directory_task_t *dir_task = (directory_task_t *) task;
+    //printf("Process %d processing directory %s to %s\n", getpid(), dir_task->object_directory, dir_task->temporary_directory);
+
+    // Extract basename of the path
+    char copy_of_obj_dir[STR_MAX_LEN];
+    strcpy(copy_of_obj_dir, dir_task->object_directory);
+    char *base_name = basename(copy_of_obj_dir);
+
+    // Open output file
+    char output_file[STR_MAX_LEN];
+    concat_path(dir_task->temporary_directory, base_name, output_file);
+    FILE *f = fopen(output_file, "w");
+
+    // Call parse_dir on path and opened file
+    if (f) {
+        parse_dir(dir_task->object_directory, f);
+        fclose(f);
+    } else {
+        printf("Could not open file %s\n", output_file);
+    }
+
+    //printf("Process %d finished its task\n", getpid());
 }
 
-/*!
- * @brief process_file processes one e-mail file.
- * @param task a file_task_t as a pointer to a task (you shall cast it to the proper type)
- * Uses parse_file
- */
 void process_file(task_t *task) {
-    // 1. Check parameters
-    // 2. Build full path to all parameters
-    // 3. Call parse_file
+    if (!task)
+        return;
+
+    file_task_t *file_task = (file_task_t *) task;
+    char output_file[STR_MAX_LEN];
+    concat_path(file_task->temporary_directory, "step2_output", output_file);
+    parse_file(file_task->object_file, output_file);
 }

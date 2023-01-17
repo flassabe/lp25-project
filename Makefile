@@ -1,4 +1,4 @@
-TARGET=project
+TARGET=A22-solution
 CFLAGS=-Wall -O2
 LDFLAGS=
 CC=gcc

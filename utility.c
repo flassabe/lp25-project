@@ -19,43 +19,64 @@
  * @return pointer to full_path if operation succeeded, NULL else
  */
 char *concat_path(char *prefix, char *suffix, char *full_path) {
+    if (!prefix || !suffix || !full_path)
+        return NULL;
+
+    strcpy(full_path, prefix);
+    size_t last_char_pos = strlen(full_path);
+    if (full_path[last_char_pos-1] != '/') {
+        full_path[last_char_pos] = '/';
+        full_path[last_char_pos+1] = '\0';
+    }
+    strcat(full_path, suffix);
+
     return full_path;
 }
 
-/*!
- * @brief directory_exists tests if directory located at path exists
- * @param path the path whose existence to test
- * @return true if directory exists, false else
- */
 bool directory_exists(char *path) {
-    return false;
+    if (!path)
+        return false;
+    DIR *d = opendir(path);
+    if (!d)
+        return false;
+    closedir(d);
+    return true;
 }
 
-/*!
- * @brief path_to_file_exists tests if a path leading to a file exists. It separates the path to the file from the
- * file name itself. For instance, path_to_file_exists("/var/log/Xorg.0.log") will test if /var/log exists and is a
- * directory.
- * @param path the path to the file
- * @return true if path to file exists, false else
- */
 bool path_to_file_exists(char *path) {
-    return false;
+    if (!path)
+        return false;
+    char path_copy[STR_MAX_LEN];
+    strcpy(path_copy, path);
+    DIR *d = opendir(dirname(path_copy));
+    if (!d)
+        return false;
+    closedir(d);
+    return true;
 }
 
-/*!
- * @brief sync_temporary_files waits for filesystem syncing for a path
- * @param temp_dir the path to the directory to wait for
- * Use fsync and dirfd
- */
 void sync_temporary_files(char *temp_dir) {
+    DIR *tmp_dir = opendir(temp_dir);
+    if (tmp_dir) {
+        fsync(dirfd(tmp_dir));
+        closedir(tmp_dir);
+    }
 }
 
-/*!
- * @brief next_dir returns the next directory entry that is not . or ..
- * @param entry a pointer to the current struct dirent in caller
- * @param dir a pointer to the already opened directory
- * @return a pointer to the next not . or .. directory, NULL if none remain
- */
 struct dirent *next_dir(struct dirent *entry, DIR *dir) {
-    return NULL;
+    if (!dir)
+        return NULL;
+
+    entry = readdir(dir);
+
+    while (1) {
+        if (entry) {
+            if (entry->d_type != DT_DIR || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                entry = readdir(dir);
+            else
+                return entry;
+        } else {
+            return NULL;
+        }
+    }
 }

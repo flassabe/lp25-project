@@ -8,11 +8,6 @@
 #include "global_defs.h"
 #include <stdio.h>
 
-typedef struct _simple_recipient {
-    char email[STR_MAX_LEN];
-    struct _simple_recipient *next;
-} simple_recipient_t;
-
 typedef struct {
     void (* task_callback)(task_t *);
     char object_directory[STR_MAX_LEN];
