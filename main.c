@@ -9,6 +9,7 @@
 #include "reducers.h"
 #include "utility.h"
 #include "analysis.h"
+#include "cpp_reducer.h"
 
 #include <sys/msg.h>
 #include <sys/select.h>
@@ -83,7 +84,9 @@ int main(int argc, char *argv[]) {
         printf("Analysis took %d ms\n", time_diff(&tv_post_mapper2, &tv_start)/1000);
         //printf("%d", time_diff(&tv_post_mapper2, &tv_start)/1000);
         //fflush(stdout);
-        files_reducer(config.temporary_directory, config.output_file);
+        char mq_step2_file[STR_MAX_LEN];
+        concat_path(config.temporary_directory, "step2_output", mq_step2_file);
+        cpp_files_reducer(mq_step2_file, config.output_file);
         gettimeofday(&tv_end, NULL);
         printf("Complete time %d ms\n", time_diff(&tv_end, &tv_start)/1000);
 
@@ -111,7 +114,9 @@ int main(int argc, char *argv[]) {
         //printf("%d", time_diff(&tv_post_mapper2, &tv_start)/1000);
         //fflush(stdout);
         printf("Analysis took %d ms\n", time_diff(&tv_post_mapper2, &tv_start)/1000);
-        files_reducer(config.temporary_directory, config.output_file);
+        char fifo_step2_file[STR_MAX_LEN];
+        concat_path(config.temporary_directory, "step2_output", fifo_step2_file);
+        cpp_files_reducer(fifo_step2_file, config.output_file);
         gettimeofday(&tv_end, NULL);
         printf("Complete time %d ms\n", time_diff(&tv_end, &tv_start)/1000);
         clean(config.temporary_directory);
@@ -136,7 +141,7 @@ int main(int argc, char *argv[]) {
         printf("Analysis took %d ms\n", time_diff(&tv_post_mapper2, &tv_start)/1000);
         char direct_step2_file[STR_MAX_LEN];
         concat_path(config.temporary_directory, "step2_output", direct_step2_file);
-        files_reducer(config.temporary_directory, config.output_file);
+        cpp_files_reducer(config.temporary_directory, config.output_file);
         gettimeofday(&tv_end, NULL);
         printf("Complete time %d ms\n", time_diff(&tv_end, &tv_start)/1000);
         clean(config.temporary_directory);
